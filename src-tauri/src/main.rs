@@ -477,12 +477,6 @@ foreach ($ns in @('root\LibreHardwareMonitor','root\OpenHardwareMonitor')) {
     if ($temp -or $fan) { break }
   }
 }
-if (-not $temp) {
-  $thermal = Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction SilentlyContinue | Select-Object -First 1
-  if ($thermal -and $thermal.CurrentTemperature) {
-    $temp = [math]::Round(($thermal.CurrentTemperature / 10) - 273.15, 1)
-  }
-}
 Write-Output "$temp|$fan"
 "#;
 

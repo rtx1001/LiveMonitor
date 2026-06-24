@@ -18,6 +18,7 @@ It shows CPU, RAM, GPU, VRAM, fan, power, and network information in a compact t
 
 - Windows 10 or Windows 11
 - Microsoft WebView2 Runtime
+- CPU temperature/fan readings require LibreHardwareMonitor or OpenHardwareMonitor sensor data
 - NVIDIA GPU metrics use NVML or `nvidia-smi` when available
 - Non-NVIDIA GPU names fall back to Windows `Win32_VideoController`
 
