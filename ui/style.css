@@ -1,0 +1,364 @@
+:root {
+  --bg-color: #131314;
+  --surface: #1e1f20;
+  --surface-deep: #101113;
+  --border: #282a2c;
+  --text-primary: #e3e3e3;
+  --text-secondary: #9aa0a6;
+  --accent-color: #a8c7fa;
+  --accent-soft: rgba(168, 199, 250, 0.18);
+  --accent-soft-strong: rgba(168, 199, 250, 0.32);
+  --bar-bg: #090a0b;
+  --widget-bg-alpha: 0.9;
+  --font-family: "Segoe UI", Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+.gadget-container {
+  width: 100vw;
+  height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent 34%),
+    rgba(19, 19, 20, var(--widget-bg-alpha));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38), 0 0 24px color-mix(in srgb, var(--accent-color) 10%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+}
+
+.hardware-section {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 18px;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.section-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 2px;
+  color: #f8fafd;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.12);
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--accent-color);
+}
+
+.icon::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 9px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  box-shadow: 0 0 8px color-mix(in srgb, currentColor 60%, transparent);
+}
+
+.cpu-icon::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  box-shadow:
+    -5px 0 0 -4px currentColor,
+    5px 0 0 -4px currentColor,
+    0 -5px 0 -4px currentColor,
+    0 5px 0 -4px currentColor;
+}
+
+.cpu-icon::before {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.ram-icon {
+  color: #34d399;
+}
+
+.ram-icon::before {
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, currentColor 0 20%, transparent 20% 32%, currentColor 32% 52%, transparent 52% 64%, currentColor 64% 84%, transparent 84%);
+}
+
+.gpu-icon {
+  color: #a78bfa;
+}
+
+.gpu-icon::before {
+  width: 13px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.gpu-icon::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 7px;
+  height: 1px;
+  background: currentColor;
+  box-shadow: 0 2px 0 currentColor;
+}
+
+.wifi-icon {
+  color: #38bdf8;
+}
+
+.wifi-icon::before {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.wifi-icon::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(0deg, transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+  box-shadow:
+    inset 3px 0 0 -2px currentColor,
+    inset -3px 0 0 -2px currentColor;
+}
+
+.data-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) minmax(34px, 74px) minmax(56px, auto);
+  align-items: center;
+  min-width: 0;
+  min-height: 18px;
+  gap: 9px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.data-row:has(.progress-bar-container) .label {
+  min-width: 0;
+}
+
+.data-row:not(:has(.progress-bar-container)) {
+  grid-template-columns: minmax(90px, 1fr) minmax(56px, auto);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  min-width: 0;
+  color: #dfe3ea;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bar-bg);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.025);
+}
+
+.progress-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 46%, white 54%));
+  box-shadow: 0 0 12px var(--accent-soft-strong);
+  transition: width 260ms ease;
+}
+
+#ram-load-bar {
+  background: linear-gradient(90deg, #34d399, #10b981);
+}
+
+#gpu-load-bar {
+  background: linear-gradient(90deg, #f43f5e, #e11d48);
+}
+
+#gpu-vram-bar {
+  background: linear-gradient(90deg, #a78bfa, #8b5cf6);
+}
+
+#gpu-fan-bar {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+:root[data-layout="horizontal"] .gadget-container {
+  display: grid;
+  grid-template-areas: "cpu ram gpu network";
+  grid-template-columns: repeat(4, 1fr);
+  align-items: stretch;
+  gap: 0;
+  padding: 8px 12px;
+}
+
+:root[data-layout="horizontal"] .cpu-section { grid-area: cpu; }
+:root[data-layout="horizontal"] .ram-section { grid-area: ram; }
+:root[data-layout="horizontal"] .gpu-section { grid-area: gpu; }
+:root[data-layout="horizontal"] .network-section { grid-area: network; }
+
+:root[data-layout="horizontal"] .hardware-section {
+  padding: 7px 8px;
+  border-right: 1px solid var(--border);
+  justify-content: flex-start;
+  gap: 4px;
+}
+
+:root[data-layout="horizontal"] .hardware-section:first-child {
+  padding-left: 8px;
+}
+
+:root[data-layout="horizontal"] .hardware-section:last-child,
+:root[data-layout="horizontal"] .hardware-section.borderless {
+  border-right: none;
+  padding-right: 8px;
+}
+
+:root[data-layout="horizontal"] .section-header {
+  width: 100%;
+  height: 18px;
+  margin-bottom: 3px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+:root[data-layout="horizontal"] .gadget-container:has(.gpu-section.is-hidden) {
+  grid-template-areas: "cpu ram network";
+  grid-template-columns: repeat(3, 1fr);
+}
+
+:root[data-layout="horizontal"] .gadget-container:has(.network-section.is-hidden) {
+  grid-template-areas: "cpu ram gpu";
+  grid-template-columns: repeat(3, 1fr);
+}
+
+:root[data-layout="horizontal"] .gadget-container:has(.gpu-section.is-hidden):has(.network-section.is-hidden) {
+  grid-template-areas: "cpu ram";
+  grid-template-columns: repeat(2, 1fr);
+}
+
+:root[data-layout="horizontal"] .data-row {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) 58px 64px;
+  min-height: 20px;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+:root[data-layout="horizontal"] .data-row:not(:has(.progress-bar-container)) {
+  grid-template-columns: minmax(0, 1fr) 64px;
+}
+
+:root[data-layout="horizontal"] .progress-bar-container {
+  justify-self: center;
+  width: 58px;
+  height: 6px;
+}
+
+:root[data-layout="horizontal"] .label {
+  font-size: 12px;
+}
+
+:root[data-layout="horizontal"] .value {
+  justify-self: end;
+  width: 64px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
+}
+
+:root[data-layout="vertical"] .gadget-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 8px 14px;
+}
+
+:root[data-layout="vertical"] .hardware-section {
+  flex: 0 0 auto;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--border);
+  justify-content: flex-start;
+}
+
+:root[data-layout="vertical"] .hardware-section:first-child {
+  padding-top: 4px;
+}
+
+:root[data-layout="vertical"] .hardware-section:last-child,
+:root[data-layout="vertical"] .hardware-section.borderless {
+  border-bottom: none;
+  padding-bottom: 4px;
+}
+
+:root[data-layout="vertical"] .section-header {
+  margin-bottom: 5px;
+}
+
+:root[data-layout="vertical"] .data-row {
+  grid-template-columns: minmax(76px, 1fr) minmax(42px, 72px) minmax(62px, auto);
+  min-height: 20px;
+  gap: 8px;
+}
+
+:root[data-layout="vertical"] .data-row:not(:has(.progress-bar-container)) {
+  grid-template-columns: minmax(98px, 1fr) minmax(64px, auto);
+}

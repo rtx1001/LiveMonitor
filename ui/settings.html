@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings - Live Monitor v1.0</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="settings-container">
+    <h2>Settings</h2>
+    
+    <div class="setting-row">
+      <span class="label">Auto-start with Windows</span>
+      <label class="switch">
+        <input type="checkbox" id="autoStart">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <h3>Tray Icons</h3>
+    <div class="setting-row">
+      <span class="label">Main App Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showMainTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU Temp Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showGpuTempTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU Load Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showGpuLoadTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU VRAM Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showVramTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU Power Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showGpuPowerTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">App Transparency (<span id="opacityVal">100%</span>)</span>
+      <input type="range" id="opacity" class="transparent-slider" min="0" max="100" step="10" value="100">
+    </div>
+
+    <div class="setting-row accent-row">
+      <span class="label">Accent Color</span>
+      <div class="accent-controls">
+        <div class="swatch-grid" id="themeSwatches" aria-label="Theme swatches"></div>
+        <label class="custom-color" title="Custom accent color">
+          <input type="color" id="accentColor" class="color-picker" value="#38bdf8" aria-label="Custom accent color">
+        </label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">Layout</span>
+      <div class="segmented">
+        <button id="layout-vertical" type="button">Vertical</button>
+        <button id="layout-horizontal" type="button">Horizontal</button>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="close-btn">Close</button>
+    </div>
+  </div>
+  <script src="tauri-polyfill.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings - Live Monitor</title>
+  <link rel="stylesheet" href="settings.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="settings-container">
+    <h2>Settings</h2>
+    
+    <div class="setting-row">
+      <span class="label">Auto-start with Windows</span>
+      <label class="switch">
+        <input type="checkbox" id="autoStart">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <h3>Tray Icons</h3>
+    <div class="setting-row">
+      <span class="label">Main App Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showMainTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU Temp Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showGpuTempTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU Load Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showGpuLoadTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU VRAM Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showVramTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">GPU Power Icon</span>
+      <label class="switch">
+        <input type="checkbox" id="showGpuPowerTray">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
+    <div class="setting-row">
+      <span class="label">App Transparency (<span id="opacityVal">100%</span>)</span>
+      <input type="range" id="opacity" class="transparent-slider" min="0" max="100" step="10" value="100">
+    </div>
+
+    <div class="setting-row">
+      <span class="label">Accent Color</span>
+      <input type="color" id="accentColor" class="color-picker" value="#38bdf8">
+    </div>
+
+    <div class="setting-row">
+      <span class="label">Layout Snap</span>
+      <div style="display: flex; gap: 5px;">
+        <button id="snap-vertical" style="margin: 0; padding: 4px 8px;">Vertical</button>
+        <button id="snap-horizontal" style="margin: 0; padding: 4px 8px;">Horizontal</button>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="close-btn">Close</button>
+      <button id="apply-btn">Apply</button>
+    </div>
+  </div>
+  <script src="tauri-polyfill.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

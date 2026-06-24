@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Monitor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="gadget-container">
+    <div class="drag-handle"></div>
+
+    <!-- CPU Section -->
+    <div class="hardware-section cpu-section">
+      <div class="section-header">
+        <span class="icon cpu-icon"></span>
+        <span class="title" id="cpu-name">CPU</span>
+      </div>
+
+      <div class="data-row">
+        <span class="label">CPU Temp</span>
+        <span class="value" id="cpu-temp">-- °C</span>
+      </div>
+      <div class="data-row">
+        <span class="label">CPU Fan</span>
+        <span class="value" id="cpu-fan">-- RPM</span>
+      </div>
+      <div class="data-row">
+        <span class="label">CPU Load</span>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="cpu-load-bar" style="width: 0%;"></div>
+        </div>
+        <span class="value" id="cpu-load-val">--%</span>
+      </div>
+    </div>
+
+    <!-- RAM Section -->
+    <div class="hardware-section ram-section">
+      <div class="section-header">
+        <span class="icon ram-icon"></span>
+        <span class="title">RAM</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Memory</span>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="ram-load-bar" style="width: 0%;"></div>
+        </div>
+        <span class="value" id="ram-val">-- / -- GB</span>
+      </div>
+    </div>
+
+    <!-- GPU Section -->
+    <div class="hardware-section gpu-section">
+      <div class="section-header">
+        <span class="icon gpu-icon"></span>
+        <span class="title" id="gpu-name">GPU</span>
+      </div>
+      <div class="data-row">
+        <span class="label">GPU Power</span>
+        <span class="value" id="gpu-power">-- W</span>
+      </div>
+      <div class="data-row">
+        <span class="label">GPU Temp</span>
+        <span class="value" id="gpu-temp">-- °C</span>
+      </div>
+      <div class="data-row">
+        <span class="label">GPU Load</span>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="gpu-load-bar" style="width: 0%;"></div>
+        </div>
+        <span class="value" id="gpu-load-val">--%</span>
+      </div>
+      <div class="data-row">
+        <span class="label">GPU VRAM</span>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="gpu-vram-bar" style="width: 0%;"></div>
+        </div>
+        <span class="value" id="gpu-vram-val">--%</span>
+      </div>
+      <div class="data-row">
+        <span class="label">GPU Fan</span>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="gpu-fan-bar" style="width: 0%;"></div>
+        </div>
+        <span class="value" id="gpu-fan-val">--%</span>
+      </div>
+    </div>
+
+    <!-- Network Section -->
+    <div class="hardware-section network-section borderless">
+      <div class="section-header">
+        <span class="icon wifi-icon"></span>
+        <span class="title">Network</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Upload Speed</span>
+        <span class="value" id="net-up">-- KB/s</span>
+      </div>
+      <div class="data-row">
+        <span class="label">Download Speed</span>
+        <span class="value" id="net-down">-- KB/s</span>
+      </div>
+    </div>
+
+  </div>
+  <script src="tauri-polyfill.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

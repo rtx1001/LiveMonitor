@@ -1,0 +1,38 @@
+{
+  "name": "live-monitor",
+  "version": "1.0.0",
+  "description": "Lightweight Windows desktop hardware monitor widget built with Tauri.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "tauri dev",
+    "start": "electron .",
+    "build": "cd src-tauri && cargo build --release",
+    "build:release": "cd src-tauri && cargo build --release",
+    "build:electron": "electron-builder --win portable",
+    "build:tauri-bundle": "tauri build"
+  },
+  "build": {
+    "appId": "com.livelab.livemonitor",
+    "productName": "Live Monitor",
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "icon.png"
+    }
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "sharp": "^0.35.0",
+    "systeminformation": "^5.31.7"
+  },
+  "devDependencies": {
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.2"
+  }
+}

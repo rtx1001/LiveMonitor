@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Rust / Tauri build output
+src-tauri/target/
+target/
+
+# Release artifacts
+dist/
+*.exe
+*.msi
+*.msix
+*.app
+*.dmg
+*.deb
+*.rpm
+
+# Logs and local runtime files
+*.log
+tauri-dev.log
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local environment files
+.env
+.env.*
