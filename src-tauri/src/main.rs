@@ -24,7 +24,6 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 static HOST_SYSTEM: OnceLock<Mutex<System>> = OnceLock::new();
 static NVML_STATE: OnceLock<Mutex<Option<NvmlApi>>> = OnceLock::new();
-static CPU_SENSOR_STATE: OnceLock<Mutex<Option<(Instant, CpuSensorMetrics)>>> = OnceLock::new();
 static NVIDIA_SMI_FAN_STATE: OnceLock<Mutex<Option<(Instant, Option<f64>)>>> = OnceLock::new();
 
 type NvmlReturn = u32;
@@ -199,6 +198,33 @@ fn shorten_cpu_name(name: &str) -> String {
         }
     }
     value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn normalize_gpu_name(name: &str) -> String {
+    let value = name.split_whitespace().collect::<Vec<_>>().join(" ");
+    if value.is_empty() {
+        return "GPU".to_string();
+    }
+
+    let lower = value.to_lowercase();
+    let has_vendor_prefix = lower.starts_with("nvidia")
+        || lower.starts_with("amd")
+        || lower.starts_with("intel")
+        || lower.starts_with("apple")
+        || lower.starts_with("qualcomm")
+        || lower.starts_with("microsoft");
+
+    if has_vendor_prefix {
+        value
+    } else if lower.contains("geforce") || lower.contains("quadro") || lower.contains("rtx") || lower.contains("gtx") {
+        format!("NVIDIA {value}")
+    } else if lower.contains("radeon") || lower.contains("firepro") {
+        format!("AMD {value}")
+    } else if lower.contains("arc") || lower.contains("iris") || lower.contains("uhd graphics") || lower.contains("hd graphics") {
+        format!("Intel {value}")
+    } else {
+        value
+    }
 }
 
 impl AppState {
@@ -444,80 +470,6 @@ fn query_host_metrics(system: &mut System) -> (u64, u64, f32) {
 }
 
 fn query_cpu_sensor_metrics() -> CpuSensorMetrics {
-    let cache = CPU_SENSOR_STATE.get_or_init(|| Mutex::new(None));
-    if let Ok(mut guard) = cache.lock() {
-        if let Some((last_update, metrics)) = *guard {
-            if last_update.elapsed() < Duration::from_secs(5) {
-                return metrics;
-            }
-        }
-        let metrics = query_cpu_sensor_metrics_uncached();
-        *guard = Some((Instant::now(), metrics));
-        return metrics;
-    }
-    query_cpu_sensor_metrics_uncached()
-}
-
-#[cfg(target_os = "windows")]
-fn query_cpu_sensor_metrics_uncached() -> CpuSensorMetrics {
-    let script = r#"
-$ErrorActionPreference = 'SilentlyContinue'
-$temp = $null
-$fan = $null
-foreach ($ns in @('root\LibreHardwareMonitor','root\OpenHardwareMonitor')) {
-  $sensors = Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction SilentlyContinue
-  if ($sensors) {
-    $temp = $sensors |
-      Where-Object { $_.SensorType -eq 'Temperature' -and (($_.Name -match 'CPU|Package|Core|Tctl|Tdie') -or ($_.HardwareType -match 'CPU')) } |
-      Sort-Object @{ Expression = { if ($_.Name -match 'Package|Tctl|Tdie') { 0 } else { 1 } } } |
-      Select-Object -First 1 -ExpandProperty Value
-    $fan = $sensors |
-      Where-Object { $_.SensorType -eq 'Fan' -and (($_.Name -match 'CPU|Processor') -or ($_.HardwareType -match 'CPU')) } |
-      Select-Object -First 1 -ExpandProperty Value
-    if ($temp -or $fan) { break }
-  }
-}
-Write-Output "$temp|$fan"
-"#;
-
-    let output = hidden_command("powershell.exe")
-        .args([
-            "-NoProfile",
-            "-WindowStyle",
-            "Hidden",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            script,
-        ])
-        .output();
-
-    let Ok(output) = output else {
-        return CpuSensorMetrics::default();
-    };
-    if !output.status.success() {
-        return CpuSensorMetrics::default();
-    }
-
-    let text = String::from_utf8_lossy(&output.stdout);
-    let mut parts = text.trim().split('|');
-    let temperature_c = parts
-        .next()
-        .and_then(|value| value.trim().parse::<f64>().ok())
-        .filter(|value| (1.0..=125.0).contains(value));
-    let fan_rpm = parts
-        .next()
-        .and_then(|value| value.trim().parse::<f64>().ok())
-        .filter(|value| (50.0..=10000.0).contains(value));
-
-    CpuSensorMetrics {
-        temperature_c,
-        fan_rpm,
-    }
-}
-
-#[cfg(not(target_os = "windows"))]
-fn query_cpu_sensor_metrics_uncached() -> CpuSensorMetrics {
     CpuSensorMetrics::default()
 }
 
@@ -552,24 +504,22 @@ fn detect_hardware_identity() -> HardwareIdentity {
             let text = String::from_utf8_lossy(&out.stdout);
             let line = text.lines().next().unwrap_or_default();
             let mut parts = line.split(',').map(str::trim);
-            let gpu_name = parts
-                .next()
-                .unwrap_or("GPU")
-                .replace("NVIDIA GeForce ", "")
-                .replace("NVIDIA ", "");
+            let gpu_name = normalize_gpu_name(parts.next().unwrap_or("GPU"));
             let total = parts
                 .next()
                 .and_then(|value| value.parse::<u32>().ok())
                 .unwrap_or(0);
             return HardwareIdentity {
                 cpu_name,
-                gpu_name: if gpu_name.is_empty() { "GPU".to_string() } else { gpu_name },
+                gpu_name,
                 gpu_total_mb: total,
             };
         }
     }
 
-    let gpu_name = detect_generic_gpu_name().unwrap_or_else(|| "GPU unavailable".to_string());
+    let gpu_name = detect_generic_gpu_name()
+        .map(|name| normalize_gpu_name(&name))
+        .unwrap_or_else(|| "GPU unavailable".to_string());
 
     HardwareIdentity {
         cpu_name,
@@ -728,6 +678,8 @@ fn build_tray_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
         true,
         &[&lock_position_on, &lock_position_off],
     )?;
+    let reset_widget_location =
+        MenuItemBuilder::with_id("reset_widget_location", "Reset widget location").build(app)?;
     let toggle = MenuItemBuilder::with_id("toggle_gadget", "Show/Hide Gadget").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
     Menu::with_items(
@@ -739,6 +691,7 @@ fn build_tray_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
             &always_on_top,
             &lock_position,
             &PredefinedMenuItem::separator(app)?,
+            &reset_widget_location,
             &toggle,
             &PredefinedMenuItem::separator(app)?,
             &quit,
@@ -951,6 +904,48 @@ fn show_context_menu(app: AppHandle, window: WebviewWindow) {
     if let Ok(menu) = build_tray_menu(&app) {
         let _ = menu.popup(window.as_ref().window());
     }
+}
+
+fn center_window_on_monitor(window: &WebviewWindow, width: f64, height: f64) {
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten());
+    let Some(monitor) = monitor else {
+        return;
+    };
+
+    let scale_factor = monitor.scale_factor();
+    let work_area = monitor.work_area();
+    let x = (work_area.position.x as f64 / scale_factor)
+        + ((work_area.size.width as f64 / scale_factor) - width) / 2.0;
+    let y = (work_area.position.y as f64 / scale_factor)
+        + ((work_area.size.height as f64 / scale_factor) - height) / 2.0;
+    let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition { x, y }));
+}
+
+fn reset_widget_location(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    let state = app.state::<AppState>();
+    let mode = {
+        let mut settings = state.settings.lock().unwrap();
+        settings.window_bounds = None;
+        settings.horizontal_window_bounds = None;
+        settings.vertical_window_bounds = None;
+        settings.layout_mode.clone()
+    };
+    let (width, height) = layout_size(&mode);
+    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
+    center_window_on_monitor(&window, width, height);
+    save_window_bounds(&window, &state);
+    let settings_snapshot = state.settings.lock().unwrap().clone();
+    let _ = app.emit("settings-updated", settings_snapshot);
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
 }
 
 #[tauri::command]
@@ -1255,6 +1250,7 @@ fn main() {
                 let settings_snapshot = state.settings.lock().unwrap().clone();
                 let _ = app.emit("settings-updated", settings_snapshot);
             }
+            "reset_widget_location" => reset_widget_location(app),
             "toggle_gadget" => toggle_main_window(app),
             "quit" => quit_app(app),
             _ => {}

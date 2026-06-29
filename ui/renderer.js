@@ -5,6 +5,12 @@ let lastTrayFingerprint = '';
 const $ = (id) => document.getElementById(id);
 const clamp = (value, min = 0, max = 100) => Math.min(max, Math.max(min, Number(value) || 0));
 const formatPercent = (value) => `${clamp(value).toFixed(Number(value) % 1 ? 1 : 0)}%`;
+const formatRamTotal = (value) => {
+  const total = Number(value);
+  if (!Number.isFinite(total) || total <= 0) return 'RAM';
+  const rounded = Math.round(total);
+  return `RAM ${Math.abs(total - rounded) < 0.05 ? rounded : total.toFixed(1)}GB`;
+};
 const formatTemp = (value) => `${Math.round(Number(value) || 0)} C`;
 const formatFan = (value) => `${Math.round(Number(value) || 0)} RPM`;
 
@@ -78,6 +84,7 @@ function updateHardware(data) {
   }
 
   if (data.ram) {
+    setText('ram-title', formatRamTotal(data.ram.total));
     setText('ram-val', formatPercent(data.ram.percent));
     setBar('ram-load-bar', data.ram.percent);
   }
