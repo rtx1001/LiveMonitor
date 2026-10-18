@@ -1,6 +1,6 @@
 {
   "name": "live-monitor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lightweight Windows desktop hardware monitor widget built with Tauri.",
   "main": "main.js",
   "scripts": {

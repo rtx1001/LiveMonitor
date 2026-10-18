@@ -99,6 +99,74 @@ function saveCurrentSettings(reason) {
     .catch((error) => console.error(`Failed to save ${reason}`, error));
 }
 
+function renderDiagnostics(payload) {
+  const panel = $('diagnosticsPanel');
+  if (!panel) return;
+  panel.innerHTML = '';
+
+  const groups = Array.isArray(payload?.groups) ? payload.groups : [];
+  if (groups.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'diagnostics-empty';
+    empty.textContent = 'Diagnostics unavailable';
+    panel.appendChild(empty);
+    return;
+  }
+
+  for (const group of groups) {
+    const groupElement = document.createElement('div');
+    groupElement.className = 'diagnostics-group';
+
+    const title = document.createElement('div');
+    title.className = 'diagnostics-title';
+    title.textContent = group.title || 'Status';
+    groupElement.appendChild(title);
+
+    const items = Array.isArray(group.items) ? group.items : [];
+    for (const item of items) {
+      const row = document.createElement('div');
+      row.className = 'diagnostics-row';
+
+      const label = document.createElement('div');
+      label.className = 'diagnostics-label';
+      label.textContent = item.label || '';
+
+      const value = document.createElement('div');
+      value.className = 'diagnostics-value';
+      value.textContent = item.value || '';
+      value.title = item.value || '';
+
+      const status = document.createElement('span');
+      status.className = `diagnostics-status ${item.status || 'warn'}`;
+      status.title = item.status || 'warn';
+
+      row.append(label, value, status);
+      groupElement.appendChild(row);
+    }
+
+    panel.appendChild(groupElement);
+  }
+}
+
+function loadDiagnostics() {
+  const panel = $('diagnosticsPanel');
+  if (!panel) return;
+
+  if (!window.electronAPI?.getDiagnostics) {
+    panel.innerHTML = '<div class="diagnostics-empty">Diagnostics unavailable</div>';
+    return;
+  }
+
+  panel.innerHTML = '<div class="diagnostics-empty">Loading...</div>';
+  window.electronAPI
+    .getDiagnostics()
+    .then(renderDiagnostics)
+    .catch((error) => {
+      console.error('Failed to load diagnostics', error);
+      panel.innerHTML = '<div class="diagnostics-empty">Diagnostics failed to load</div>';
+    });
+}
+
 function initBackendSettings() {
   if (window.__settingsBackendInitialized || !window.electronAPI) return;
   window.__settingsBackendInitialized = true;
@@ -111,6 +179,7 @@ function initBackendSettings() {
   if (window.electronAPI.onSettingsUpdated) {
     window.electronAPI.onSettingsUpdated(applySettingsToForm);
   }
+  loadDiagnostics();
 }
 
 function initSettings() {
@@ -149,6 +218,7 @@ function initSettings() {
     $('opacityVal').innerText = `${$('opacity').value}%`;
     saveCurrentSettings('opacity');
   });
+  $('refreshDiagnostics').addEventListener('click', loadDiagnostics);
 
   $('layout-vertical').dataset.mode = 'vertical';
   $('layout-horizontal').dataset.mode = 'horizontal';

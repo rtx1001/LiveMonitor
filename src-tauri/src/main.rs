@@ -1,5 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::{
     ffi::c_void,
     path::PathBuf,
@@ -7,8 +9,6 @@ use std::{
     sync::{Mutex, OnceLock},
     time::{Duration, Instant},
 };
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
 
 use base64::Engine;
 use libloading::Library;
@@ -55,8 +55,7 @@ struct NvmlApi {
     device_get_utilization_rates:
         Option<unsafe extern "C" fn(NvmlDevice, *mut NvmlUtilization) -> NvmlReturn>,
     device_get_fan_speed: Option<unsafe extern "C" fn(NvmlDevice, *mut u32) -> NvmlReturn>,
-    device_get_fan_speed_v2:
-        Option<unsafe extern "C" fn(NvmlDevice, u32, *mut u32) -> NvmlReturn>,
+    device_get_fan_speed_v2: Option<unsafe extern "C" fn(NvmlDevice, u32, *mut u32) -> NvmlReturn>,
     device_get_power_usage: Option<unsafe extern "C" fn(NvmlDevice, *mut u32) -> NvmlReturn>,
 }
 
@@ -171,6 +170,12 @@ struct HardwareIdentity {
     gpu_total_mb: u32,
 }
 
+#[derive(Clone)]
+struct NvidiaSmiIdentity {
+    gpu_name: String,
+    gpu_total_mb: u32,
+}
+
 fn normalize_settings(mut settings: Settings) -> Settings {
     settings.opacity = settings.opacity.clamp(20, 100);
     if !settings.accent_color.starts_with('#') || settings.accent_color.len() != 7 {
@@ -216,11 +221,19 @@ fn normalize_gpu_name(name: &str) -> String {
 
     if has_vendor_prefix {
         value
-    } else if lower.contains("geforce") || lower.contains("quadro") || lower.contains("rtx") || lower.contains("gtx") {
+    } else if lower.contains("geforce")
+        || lower.contains("quadro")
+        || lower.contains("rtx")
+        || lower.contains("gtx")
+    {
         format!("NVIDIA {value}")
     } else if lower.contains("radeon") || lower.contains("firepro") {
         format!("AMD {value}")
-    } else if lower.contains("arc") || lower.contains("iris") || lower.contains("uhd graphics") || lower.contains("hd graphics") {
+    } else if lower.contains("arc")
+        || lower.contains("iris")
+        || lower.contains("uhd graphics")
+        || lower.contains("hd graphics")
+    {
         format!("Intel {value}")
     } else {
         value
@@ -304,13 +317,9 @@ fn load_nvml_api() -> Result<NvmlApi, String> {
                 u32,
                 *mut u32,
             ) -> NvmlReturn = load_symbol(&library, &[b"nvmlDeviceGetTemperature\0"])?;
-            let device_get_utilization_rates = load_symbol(
-                &library,
-                &[b"nvmlDeviceGetUtilizationRates\0"],
-            )
-            .ok();
-            let device_get_fan_speed =
-                load_symbol(&library, &[b"nvmlDeviceGetFanSpeed\0"]).ok();
+            let device_get_utilization_rates =
+                load_symbol(&library, &[b"nvmlDeviceGetUtilizationRates\0"]).ok();
+            let device_get_fan_speed = load_symbol(&library, &[b"nvmlDeviceGetFanSpeed\0"]).ok();
             let device_get_fan_speed_v2 =
                 load_symbol(&library, &[b"nvmlDeviceGetFanSpeed_v2\0"]).ok();
             let device_get_power_usage =
@@ -431,10 +440,7 @@ fn query_nvidia_smi_fan_percent() -> Option<f64> {
         }
 
         let output = hidden_command("nvidia-smi")
-            .args([
-                "--query-gpu=fan.speed",
-                "--format=csv,noheader,nounits",
-            ])
+            .args(["--query-gpu=fan.speed", "--format=csv,noheader,nounits"])
             .output();
 
         let value = output
@@ -483,6 +489,35 @@ fn hidden_command(program: &str) -> Command {
     command
 }
 
+fn detect_nvidia_smi_identity() -> Option<NvidiaSmiIdentity> {
+    let output = hidden_command("nvidia-smi")
+        .arg("--query-gpu=name,memory.total")
+        .arg("--format=csv,noheader,nounits")
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let line = text.lines().next().unwrap_or_default();
+    let mut parts = line.split(',').map(str::trim);
+    let gpu_name = normalize_gpu_name(parts.next().unwrap_or("GPU"));
+    if gpu_name.is_empty() {
+        return None;
+    }
+    let gpu_total_mb = parts
+        .next()
+        .and_then(|value| value.parse::<u32>().ok())
+        .unwrap_or(0);
+
+    Some(NvidiaSmiIdentity {
+        gpu_name,
+        gpu_total_mb,
+    })
+}
+
 fn detect_hardware_identity() -> HardwareIdentity {
     let mut system = System::new_all();
     system.refresh_cpu();
@@ -494,27 +529,12 @@ fn detect_hardware_identity() -> HardwareIdentity {
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "CPU".to_string());
 
-    let output = hidden_command("nvidia-smi")
-        .arg("--query-gpu=name,memory.total")
-        .arg("--format=csv,noheader,nounits")
-        .output();
-
-    if let Ok(out) = output {
-        if out.status.success() {
-            let text = String::from_utf8_lossy(&out.stdout);
-            let line = text.lines().next().unwrap_or_default();
-            let mut parts = line.split(',').map(str::trim);
-            let gpu_name = normalize_gpu_name(parts.next().unwrap_or("GPU"));
-            let total = parts
-                .next()
-                .and_then(|value| value.parse::<u32>().ok())
-                .unwrap_or(0);
-            return HardwareIdentity {
-                cpu_name,
-                gpu_name,
-                gpu_total_mb: total,
-            };
-        }
+    if let Some(identity) = detect_nvidia_smi_identity() {
+        return HardwareIdentity {
+            cpu_name,
+            gpu_name: identity.gpu_name,
+            gpu_total_mb: identity.gpu_total_mb,
+        };
     }
 
     let gpu_name = detect_generic_gpu_name()
@@ -597,11 +617,11 @@ fn layout_size(mode: &str) -> (f64, f64) {
     }
 }
 
-fn infer_layout_from_size(width: f64, height: f64, fallback: &str) -> String {
-    let (vertical_width, vertical_height) = layout_size("vertical");
-    let (horizontal_width, horizontal_height) = layout_size("horizontal");
-    let vertical_delta = (width - vertical_width).abs() + (height - vertical_height).abs();
-    let horizontal_delta = (width - horizontal_width).abs() + (height - horizontal_height).abs();
+fn infer_layout_from_size(width: f64, _height: f64, fallback: &str) -> String {
+    let (vertical_width, _) = layout_size("vertical");
+    let (horizontal_width, _) = layout_size("horizontal");
+    let vertical_delta = (width - vertical_width).abs();
+    let horizontal_delta = (width - horizontal_width).abs();
 
     if vertical_delta + 24.0 < horizontal_delta {
         "vertical".to_string()
@@ -708,18 +728,16 @@ fn ensure_tray(app: &AppHandle, id: &str, tooltip: &str, show: bool) {
                     .icon(placeholder_icon_rgba([30, 31, 32, 255]))
                     .menu(&menu)
                     .show_menu_on_left_click(false)
-                    .on_tray_icon_event(|tray, event| {
-                        match event {
-                            TrayIconEvent::Click {
-                                button: MouseButton::Left,
-                                ..
-                            } => show_main_window(tray.app_handle()),
-                            TrayIconEvent::DoubleClick {
-                                button: MouseButton::Left,
-                                ..
-                            } => open_or_focus_settings(tray.app_handle()),
-                            _ => {}
-                        }
+                    .on_tray_icon_event(|tray, event| match event {
+                        TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            ..
+                        } => show_main_window(tray.app_handle()),
+                        TrayIconEvent::DoubleClick {
+                            button: MouseButton::Left,
+                            ..
+                        } => open_or_focus_settings(tray.app_handle()),
+                        _ => {}
                     })
                     .build(app);
             }
@@ -787,19 +805,23 @@ fn open_or_focus_settings(app: &AppHandle) {
         return;
     }
 
-    if let Ok(win) = WebviewWindowBuilder::new(app, "settings", tauri::WebviewUrl::App("settings.html".into()))
-        .title("Settings - Live Monitor v1.0")
-        .inner_size(410.0, 560.0)
-        .min_inner_size(410.0, 560.0)
-        .max_inner_size(410.0, 560.0)
-        .resizable(false)
-        .visible(true)
-        .transparent(false)
-        .decorations(true)
-        .skip_taskbar(false)
-        .center()
-        .background_color(tauri::window::Color(19, 19, 20, 255))
-        .build()
+    if let Ok(win) = WebviewWindowBuilder::new(
+        app,
+        "settings",
+        tauri::WebviewUrl::App("settings.html".into()),
+    )
+    .title(concat!("Settings - Live Monitor v", env!("CARGO_PKG_VERSION")))
+    .inner_size(410.0, 560.0)
+    .min_inner_size(410.0, 560.0)
+    .max_inner_size(410.0, 560.0)
+    .resizable(false)
+    .visible(true)
+    .transparent(false)
+    .decorations(true)
+    .skip_taskbar(false)
+    .center()
+    .background_color(tauri::window::Color(19, 19, 20, 255))
+    .build()
     {
         let _ = win.show();
         let _ = win.set_focus();
@@ -822,13 +844,24 @@ fn save_window_bounds(window: &WebviewWindow, state: &AppState) {
         return;
     };
     if let Ok(mut settings) = state.settings.lock() {
-        let (width, height) = layout_size(&settings.layout_mode);
+        let (fallback_width, fallback_height) = layout_size(&settings.layout_mode);
+        let scale_factor = window.scale_factor().unwrap_or(1.0);
+        let (width, height) = window
+            .outer_size()
+            .ok()
+            .map(|size| {
+                (
+                    (size.width as f64 / scale_factor).round() as u32,
+                    (size.height as f64 / scale_factor).round() as u32,
+                )
+            })
+            .unwrap_or((fallback_width as u32, fallback_height as u32));
         let mode = settings.layout_mode.clone();
         let bounds = WindowBounds {
             x: position.x,
             y: position.y,
-            width: width as u32,
-            height: height as u32,
+            width,
+            height,
         };
         set_bounds_for_layout(&mut settings, &mode, bounds);
     }
@@ -897,6 +930,118 @@ fn close_settings(app: AppHandle) {
     if let Some(win) = app.get_webview_window("settings") {
         let _ = win.close();
     }
+}
+
+fn diagnostic_item(label: &str, value: impl Into<String>, status: &str) -> serde_json::Value {
+    serde_json::json!({
+        "label": label,
+        "value": value.into(),
+        "status": status
+    })
+}
+
+fn diagnostic_status(available: bool) -> &'static str {
+    if available {
+        "ok"
+    } else {
+        "off"
+    }
+}
+
+fn format_gb_from_kib(value: u64) -> String {
+    if value == 0 {
+        return "Unavailable".to_string();
+    }
+    format!("{:.1} GB", value as f64 / 1024.0 / 1024.0 / 1024.0)
+}
+
+fn format_mb(value: u32) -> String {
+    if value == 0 {
+        "Unavailable".to_string()
+    } else {
+        format!("{} MB", value)
+    }
+}
+
+#[tauri::command]
+fn get_diagnostics(state: tauri::State<'_, AppState>) -> serde_json::Value {
+    let mut system = System::new_all();
+    system.refresh_cpu();
+    system.refresh_memory();
+
+    let cpu_name = system
+        .cpus()
+        .first()
+        .map(|cpu| shorten_cpu_name(cpu.brand().trim()))
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "CPU".to_string());
+    let ram_total = system.total_memory();
+    let current_identity = state.identity.lock().unwrap().clone();
+    let nvidia_smi_identity = detect_nvidia_smi_identity();
+    let generic_gpu_name = detect_generic_gpu_name().map(|name| normalize_gpu_name(&name));
+    let gpu_metrics = query_gpu_memory_metrics();
+    let cpu_sensors = query_cpu_sensor_metrics();
+    let networks = Networks::new_with_refreshed_list();
+    let network_count = networks.iter().count();
+
+    let gpu_source = if nvidia_smi_identity.is_some() {
+        "nvidia-smi"
+    } else if generic_gpu_name.is_some() {
+        "OS video controller"
+    } else {
+        "Unavailable"
+    };
+
+    let gpu_name = nvidia_smi_identity
+        .as_ref()
+        .map(|identity| identity.gpu_name.clone())
+        .or(generic_gpu_name)
+        .unwrap_or(current_identity.gpu_name);
+    let gpu_total_mb = gpu_metrics
+        .total_mb
+        .max(
+            nvidia_smi_identity
+                .map(|identity| identity.gpu_total_mb)
+                .unwrap_or(0),
+        )
+        .max(current_identity.gpu_total_mb);
+
+    serde_json::json!({
+        "groups": [
+            {
+                "title": "System",
+                "items": [
+                    diagnostic_item("CPU", cpu_name, "ok"),
+                    diagnostic_item("RAM Total", format_gb_from_kib(ram_total), diagnostic_status(ram_total > 0)),
+                    diagnostic_item("GPU", gpu_name, diagnostic_status(gpu_source != "Unavailable")),
+                    diagnostic_item("GPU Source", gpu_source, diagnostic_status(gpu_source != "Unavailable")),
+                    diagnostic_item("Network Adapters", network_count.to_string(), diagnostic_status(network_count > 0))
+                ]
+            },
+            {
+                "title": "Sensors",
+                "items": [
+                    diagnostic_item("CPU Load", "sysinfo", "ok"),
+                    diagnostic_item("CPU Temp", if cpu_sensors.temperature_c.is_some() { "Available" } else { "Unavailable" }, diagnostic_status(cpu_sensors.temperature_c.is_some())),
+                    diagnostic_item("CPU Fan", if cpu_sensors.fan_rpm.is_some() { "Available" } else { "Unavailable" }, diagnostic_status(cpu_sensors.fan_rpm.is_some())),
+                    diagnostic_item("GPU Memory", format_mb(gpu_total_mb), diagnostic_status(gpu_total_mb > 0)),
+                    diagnostic_item("GPU Temp", if gpu_metrics.temperature_c.is_some() { "NVML" } else { "Unavailable" }, diagnostic_status(gpu_metrics.temperature_c.is_some())),
+                    diagnostic_item("GPU Load", if gpu_metrics.load_percent.is_some() { "NVML" } else { "Unavailable" }, diagnostic_status(gpu_metrics.load_percent.is_some())),
+                    diagnostic_item("GPU Power", if gpu_metrics.power_w.is_some() { "NVML" } else { "Unavailable" }, diagnostic_status(gpu_metrics.power_w.is_some())),
+                    diagnostic_item("GPU Fan", if gpu_metrics.fan_percent.is_some() { "NVML / nvidia-smi" } else { "Unavailable" }, diagnostic_status(gpu_metrics.fan_percent.is_some())),
+                    diagnostic_item("Network Speed", "sysinfo", diagnostic_status(network_count > 0))
+                ]
+            },
+            {
+                "title": "Read Mode",
+                "items": [
+                    diagnostic_item("Hardware Writes", "None", "ok"),
+                    diagnostic_item("External Monitor App", "Not required", "ok"),
+                    diagnostic_item("Native GPU Access", if gpu_metrics.available { "NVML available" } else { "Unavailable or non-NVIDIA" }, diagnostic_status(gpu_metrics.available))
+                ]
+            }
+        ]
+    })
 }
 
 #[tauri::command]
@@ -982,8 +1127,7 @@ fn snap_layout(mode: String, app: AppHandle, state: tauri::State<'_, AppState>) 
                 },
             );
         }
-        bounds_for_layout(&settings, &mode)
-            .map(|bounds| (bounds.x, bounds.y))
+        bounds_for_layout(&settings, &mode).map(|bounds| (bounds.x, bounds.y))
     };
     if let Some((x, y)) = target_position {
         let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition {
@@ -1001,10 +1145,10 @@ fn snap_layout(mode: String, app: AppHandle, state: tauri::State<'_, AppState>) 
                 &mut settings,
                 &mode,
                 WindowBounds {
-                x: position.x,
-                y: position.y,
-                width: width as u32,
-                height: height as u32,
+                    x: position.x,
+                    y: position.y,
+                    width: width as u32,
+                    height: height as u32,
                 },
             );
         }
@@ -1020,11 +1164,14 @@ fn adjust_widget_height(height: u32, app: AppHandle, state: tauri::State<'_, App
         return;
     };
     let mode = state.settings.lock().unwrap().layout_mode.clone();
-    if mode != "horizontal" {
-        return;
-    }
     let (width, base_height) = layout_size(&mode);
-    let height = (height as f64).clamp(base_height, 260.0);
+    let max_height = if mode == "vertical" { 900.0 } else { 260.0 };
+    let min_height = if mode == "vertical" {
+        1.0
+    } else {
+        base_height
+    };
+    let height = (height as f64).clamp(min_height, max_height);
     let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width, height }));
 }
 
@@ -1038,11 +1185,17 @@ fn quit_app(app: &AppHandle) {
 }
 
 #[tauri::command]
-fn update_tray_icon(app: AppHandle, id: String, data_url: String, tooltip: String) -> Result<(), String> {
+fn update_tray_icon(
+    app: AppHandle,
+    id: String,
+    data_url: String,
+    tooltip: String,
+) -> Result<(), String> {
     let bytes = decode_data_url(&data_url)?;
     let image = Image::from_bytes(&bytes).map_err(|error| error.to_string())?;
     if let Some(tray) = app.tray_by_id(&id) {
-        tray.set_icon(Some(image)).map_err(|error| error.to_string())?;
+        tray.set_icon(Some(image))
+            .map_err(|error| error.to_string())?;
         if !tooltip.is_empty() {
             let _ = tray.set_tooltip(Some(&tooltip));
         }
@@ -1066,6 +1219,7 @@ fn start_hardware_monitor(app: AppHandle) {
         tokio::time::sleep(Duration::from_millis(500)).await;
 
         let mut networks = Networks::new_with_refreshed_list();
+        let mut last_network_sample = Instant::now();
 
         loop {
             let metrics = match system.lock() {
@@ -1078,6 +1232,12 @@ fn start_hardware_monitor(app: AppHandle) {
             };
 
             networks.refresh();
+            let network_sample = Instant::now();
+            let network_elapsed = network_sample
+                .duration_since(last_network_sample)
+                .as_secs_f64()
+                .max(0.001);
+            last_network_sample = network_sample;
             let (net_tx, net_rx) = networks.iter().fold((0u64, 0u64), |(tx, rx), (_, data)| {
                 (tx + data.transmitted(), rx + data.received())
             });
@@ -1134,8 +1294,8 @@ fn start_hardware_monitor(app: AppHandle) {
                     "available": gpu_memory.available
                 },
                 "network": {
-                    "tx": format!("{:.1}", net_tx as f64 / 1024.0),
-                    "rx": format!("{:.1}", net_rx as f64 / 1024.0)
+                    "tx": format!("{:.1}", net_tx as f64 / 1024.0 / network_elapsed),
+                    "rx": format!("{:.1}", net_rx as f64 / 1024.0 / network_elapsed)
                 },
                 "settings": settings
             });
@@ -1226,7 +1386,11 @@ fn main() {
                 snap_layout("vertical".to_string(), app.clone(), app.state::<AppState>());
             }
             "layout_horizontal" => {
-                snap_layout("horizontal".to_string(), app.clone(), app.state::<AppState>());
+                snap_layout(
+                    "horizontal".to_string(),
+                    app.clone(),
+                    app.state::<AppState>(),
+                );
             }
             "always_on_top_on" | "always_on_top_off" => {
                 let enabled = event.id().as_ref() == "always_on_top_on";
@@ -1257,6 +1421,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,
+            get_diagnostics,
             save_settings,
             open_settings,
             close_settings,

@@ -32,7 +32,25 @@ body {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 36px);
-  overflow: hidden;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent-color) 42%, #3a3b3d 58%) transparent;
+}
+
+.settings-container::-webkit-scrollbar {
+  width: 7px;
+}
+
+.settings-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-container::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-color) 42%, #3a3b3d 58%);
 }
 
 h2 {
@@ -255,11 +273,92 @@ button:hover {
   color: color-mix(in srgb, var(--accent-color) 78%, white 22%);
 }
 
+.diagnostics-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(15, 16, 17, 0.62);
+}
+
+.diagnostics-empty {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.diagnostics-group {
+  display: grid;
+  gap: 6px;
+}
+
+.diagnostics-title {
+  color: color-mix(in srgb, var(--accent-color) 72%, white 28%);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.diagnostics-row {
+  display: grid;
+  grid-template-columns: minmax(88px, 1fr) minmax(92px, auto) 8px;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.diagnostics-label,
+.diagnostics-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostics-value {
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+}
+
+.diagnostics-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.34);
+}
+
+.diagnostics-status.ok {
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.34);
+}
+
+.diagnostics-status.off {
+  background: #6b7280;
+  box-shadow: none;
+}
+
+.diagnostics-actions {
+  display: grid;
+  grid-template-columns: minmax(110px, 140px);
+  justify-content: end;
+  margin-top: 9px;
+  -webkit-app-region: no-drag;
+}
+
 .button-group {
   display: grid;
   grid-template-columns: minmax(150px, 190px);
   justify-content: center;
-  margin-top: auto;
+  margin-top: 14px;
   padding-top: 14px;
   -webkit-app-region: no-drag;
 }

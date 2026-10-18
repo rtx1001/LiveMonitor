@@ -19,6 +19,7 @@
         listen('settings-updated', (event) => callback(event.payload));
       },
       getSettings: () => invoke('get_settings'),
+      getDiagnostics: () => invoke('get_diagnostics'),
       saveSettings: (settings) => invoke('save_settings', { settings }),
       updateTrayIcon: (id, dataUrl, tooltip) => invoke('update_tray_icon', { id, dataUrl, tooltip }),
       notifyMainReady: () => emit('main-window-ready'),

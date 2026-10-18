@@ -58,9 +58,18 @@ function updateLayout() {
 }
 
 function adjustWidgetHeightForContent() {
-  if (document.documentElement.dataset.layout !== 'horizontal' || !window.electronAPI.adjustWidgetHeight) {
+  if (!window.electronAPI.adjustWidgetHeight) {
     return;
   }
+  const mode = document.documentElement.dataset.layout;
+  if (mode === 'vertical') {
+    const container = document.querySelector('.gadget-container');
+    if (!container) return;
+    const desiredHeight = Math.ceil(container.getBoundingClientRect().height);
+    window.electronAPI.adjustWidgetHeight(desiredHeight).catch(() => {});
+    return;
+  }
+  if (mode !== 'horizontal') return;
   const rowCounts = [...document.querySelectorAll('.hardware-section:not(.is-hidden)')]
     .map((section) => section.querySelectorAll('.data-row:not(.is-hidden)').length);
   const maxRows = Math.max(0, ...rowCounts);
@@ -213,6 +222,13 @@ function updateTrayIcons(data, vramPercent) {
 }
 
 function initRenderer() {
+  const container = document.querySelector('.gadget-container');
+  if (container) {
+    const contentObserver = new ResizeObserver(() => {
+      requestAnimationFrame(adjustWidgetHeightForContent);
+    });
+    contentObserver.observe(container);
+  }
   window.electronAPI.getSettings().then(applySettings).catch(() => {});
   window.electronAPI.onSettingsUpdated(applySettings);
   window.electronAPI.onHardwareData(updateHardware);

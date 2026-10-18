@@ -326,6 +326,7 @@ body {
 
 :root[data-layout="vertical"] .gadget-container {
   display: flex;
+  height: auto;
   flex-direction: column;
   justify-content: flex-start;
   gap: 0;

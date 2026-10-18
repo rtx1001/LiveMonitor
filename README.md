@@ -28,7 +28,7 @@ Most Windows 10/11 systems already include WebView2. If a target machine does no
 The portable test build is generated at:
 
 ```text
-dist/Live_Monitor_v1.0_Portable.exe
+dist/Live_Monitor_v1.0.1_Portable.exe
 ```
 
 For GitHub, prefer uploading the `.exe` as a Release asset instead of committing it to the repository.
@@ -62,14 +62,14 @@ src-tauri/target/release/app.exe
 You can copy/rename it to:
 
 ```text
-dist/Live_Monitor_v1.0_Portable.exe
+dist/Live_Monitor_v1.0.1_Portable.exe
 ```
 
 ## Version
 
-Current version: `1.0.0`
+Current version: `1.0.1`
 
-The settings title bar displays `Settings - Live Monitor v1.0`.
+The settings title bar displays `Settings - Live Monitor v1.0.1`.
 
 ## License
 
